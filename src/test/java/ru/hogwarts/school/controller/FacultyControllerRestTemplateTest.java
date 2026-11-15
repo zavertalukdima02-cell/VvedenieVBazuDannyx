@@ -1,4 +1,4 @@
-package ru.hogwarts.school.test.controller;
+package ru.hogwarts.school.controller;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
