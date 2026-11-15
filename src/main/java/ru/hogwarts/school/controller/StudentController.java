@@ -39,35 +39,49 @@ public class StudentController {
     }
 
     @GetMapping
-        public List<Student> getStudents (@RequestParam(required = false) Integer age,
-                @RequestParam(required = false) Integer min,
-                @RequestParam(required = false) Integer max){
-            if (min != null || max != null) {
-                if (min == null || max == null || age != null) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use min and max together without age");
-                }
-                return studentService.findStudentsByAgeBetween(min, max);
+    public List<Student> getStudents(@RequestParam(required = false) Integer age,
+                                     @RequestParam(required = false) Integer min,
+                                     @RequestParam(required = false) Integer max) {
+        if (min != null || max != null) {
+            if (min == null || max == null || age != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use min and max together without age");
             }
-            return age == null ? studentService.getAllStudents() : studentService.findStudentsByAge(age);
+            return studentService.findStudentsByAgeBetween(min, max);
         }
+        return age == null ? studentService.getAllStudents() : studentService.findStudentsByAge(age);
+    }
 
-        @GetMapping("/{id}/faculty")
-        public Faculty getStudentFaculty (@PathVariable Long id){
-            return studentService.getStudentFaculty(id);
-        }
+    @GetMapping("/count")
+    public long getStudentCount() {
+        return studentService.getStudentCount();
+    }
 
-        @PutMapping
-        public Student editStudent (@RequestBody Student student){
-            if (student.getId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Student id is required");
-            }
-            return studentService.editStudent(student);
-        }
+    @GetMapping("/average-age")
+    public double getAverageAge() {
+        return studentService.getAverageAge();
+    }
 
-        @DeleteMapping("/{id}")
-        @ResponseStatus(HttpStatus.NO_CONTENT)
-        public void deleteStudent (@PathVariable Long id){
-            studentService.deleteStudent(id);
+    @GetMapping("/last-five")
+    public List<Student> getLastFiveStudents() {
+        return studentService.getLastFiveStudents();
+    }
+
+    @GetMapping("/{id}/faculty")
+    public Faculty getStudentFaculty(@PathVariable Long id) {
+        return studentService.getStudentFaculty(id);
+    }
+
+    @PutMapping
+    public Student editStudent(@RequestBody Student student) {
+        if (student.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Student id is required");
         }
+        return studentService.editStudent(student);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteStudent(@PathVariable Long id) {
+        studentService.deleteStudent(id);
     }
 }
