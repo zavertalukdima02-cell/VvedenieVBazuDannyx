@@ -1,23 +1,24 @@
 package ru.hogwarts.school.service;
 
+import jakarta.persistence.EntityNotFoundException;
+import org.example.hogwarts.model.Faculty;
+import org.example.hogwarts.model.Student;
+import org.example.hogwarts.repository.FacultyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-import ru.hogwarts.school.exception.FacultyNotFoundException;
-import ru.hogwarts.school.model.Faculty;
-import ru.hogwarts.school.model.Student;
-import ru.hogwarts.school.repository.FacultyRepository;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
-@Transactional(readOnly = true)
 public class FacultyService {
-    private static final Logger LOGGER = LoggerFactory.getLogger(FacultyService.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(FacultyService.class);
 
     private final FacultyRepository facultyRepository;
 
@@ -26,59 +27,79 @@ public class FacultyService {
         this.facultyRepository = facultyRepository;
     }
 
-    @Transactional
-    public Faculty addFaculty(Faculty faculty) {
-        LOGGER.info("Was invoked method for adding a faculty");
-        faculty.setId(null);
+    public Faculty create(Faculty faculty) {
+        logger.info("Was invoked method for create faculty");
+        logger.debug("Creating faculty with name = {}", faculty.getName());
         return facultyRepository.save(faculty);
     }
 
-    public Faculty findFaculty(Long id) {
-        LOGGER.info("Was invoked method for finding a faculty with id={}", id);
-        return facultyRepository.findById(id)
-                .orElseThrow(() -> {
-            LOGGER.error("No faculty with id={}", id);
-            return new FacultyNotFoundException(id);
-        });
-    }
-
-    public List<Faculty> getAllFaculties() {
-        LOGGER.info("Was invoked method for getting all faculties");
-        return facultyRepository.findAll();
-    }
-
-    public List<Faculty> findFacultiesByColor(String color) {
-        LOGGER.info("Was invoked method for filtering faculties by color");
-        return facultyRepository.findByColorIgnoreCase(color);
-    }
-
-    public List<Faculty> findFacultiesByNameOrColor(String pattern) {
-        LOGGER.info("Was invoked method for filtering faculties by name or color");
-        return facultyRepository.findByNameContainingIgnoreCaseOrColorContainingIgnoreCase(pattern, pattern);
-    }
-
-    public List<Student> getFacultyStudents(Long id) {
-        LOGGER.info("Was invoked method for getting students of faculty with id={}", id);
-        return List.copyOf(findFaculty(id).getStudents());
-    }
-
-    @Transactional
-    public Faculty editFaculty(Faculty faculty) {
-        LOGGER.info("Was invoked method for editing a faculty with id={}", faculty.getId());
-        Faculty existing = findFaculty(faculty.getId());
-        existing.setName(faculty.getName());
-        existing.setColor(faculty.getColor());
-        return facultyRepository.save(existing);
-    }
-
-    @Transactional
-    public void deleteFaculty(Long id) {
-        LOGGER.info("Was invoked method for deleting a faculty with id={}", id);
-        Faculty faculty = findFaculty(id);
-        if (!faculty.getStudents().isEmpty()) {
-            LOGGER.error("Cannot delete faculty with id={} because it still has students", id);
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Faculty still has students");
+    public Optional<Faculty> getById(Long id) {
+        logger.info("Was invoked method for get faculty by id");
+        logger.debug("Requested faculty id = {}", id);
+        Optional<Faculty> faculty = facultyRepository.findById(id);
+        if (faculty.isEmpty()) {
+            logger.warn("There is not faculty with id = {}", id);
         }
-        facultyRepository.delete(faculty);
+        return faculty;
+    }
+
+    public List<Faculty> getAll() {
+        logger.info("Was invoked method for get all faculties");
+        List<Faculty> faculties = facultyRepository.findAll();
+        logger.debug("Found {} faculties", faculties.size());
+        return faculties;
+    }
+
+    public List<Faculty> findByNameOrColorIgnoreCase(String value) {
+        logger.info("Was invoked method for find faculty by name or color");
+        logger.debug("Search value = {}", value);
+        return facultyRepository.findByNameIgnoreCaseOrColorIgnoreCase(value, value);
+    }
+
+    public Faculty update(Long id, Faculty faculty) {
+        logger.info("Was invoked method for update faculty");
+        logger.debug("Updating faculty with id = {}", id);
+        if (!facultyRepository.existsById(id)) {
+            logger.warn("There is not faculty with id = {}", id);
+            return null;
+        }
+        faculty.setId(id);
+        return facultyRepository.save(faculty);
+    }
+
+    public boolean delete(Long id) {
+        logger.info("Was invoked method for delete faculty");
+        logger.debug("Deleting faculty with id = {}", id);
+        if (!facultyRepository.existsById(id)) {
+            logger.warn("There is not faculty with id = {}", id);
+            return false;
+        }
+        facultyRepository.deleteById(id);
+        return true;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Student> getStudentsOfFaculty(Long facultyId) {
+        logger.info("Was invoked method for get students of faculty");
+        logger.debug("Requested faculty id = {}", facultyId);
+        Faculty faculty = facultyRepository.findById(facultyId)
+                .orElseThrow(() -> {
+                    logger.error("There is not faculty with id = {}", facultyId);
+                    return new EntityNotFoundException("Faculty not found: " + facultyId);
+                });
+        List<Student> students = faculty.getStudents();
+        logger.debug("Found {} students for faculty id = {}", students.size(), facultyId);
+        return students;
+    }
+
+    public String getLongestFacultyName() {
+        logger.info("Was invoked method for get longest faculty name");
+        String longestName = facultyRepository.findAll().parallelStream()
+                .map(Faculty::getName)
+                .filter(Objects::nonNull)
+                .max(Comparator.comparingInt(String::length))
+                .orElse("");
+        logger.debug("Longest faculty name = {}", longestName);
+        return longestName;
     }
 }

@@ -1,26 +1,17 @@
 package ru.hogwarts.school.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
-import ru.hogwarts.school.model.Faculty;
-import ru.hogwarts.school.model.Student;
-import ru.hogwarts.school.service.StudentService;
+import org.example.hogwarts.model.Faculty;
+import org.example.hogwarts.model.Student;
+import org.example.hogwarts.service.StudentService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/student")
+@RequestMapping("/students")
 public class StudentController {
+
     private final StudentService studentService;
 
     public StudentController(StudentService studentService) {
@@ -28,60 +19,78 @@ public class StudentController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Student addStudent(@RequestBody Student student) {
-        return studentService.addStudent(student);
+    public ResponseEntity<Student> create(@RequestBody Student student) {
+        return ResponseEntity.ok(studentService.create(student));
     }
 
-    @GetMapping("/{id}")
-    public Student findStudent(@PathVariable Long id) {
-        return studentService.findStudent(id);
+    @GetMapping("/{id:[0-9]+}")
+    public ResponseEntity<Student> getById(@PathVariable Long id) {
+        return studentService.getById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping
-    public List<Student> getStudents(@RequestParam(required = false) Integer age,
-                                     @RequestParam(required = false) Integer min,
-                                     @RequestParam(required = false) Integer max) {
-        if (min != null || max != null) {
-            if (min == null || max == null || age != null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use min and max together without age");
-            }
-            return studentService.findStudentsByAgeBetween(min, max);
+    public List<Student> getAll() {
+        return studentService.getAll();
+    }
+
+    @PutMapping("/{id:[0-9]+}")
+    public ResponseEntity<Student> update(@PathVariable Long id, @RequestBody Student student) {
+        Student updated = studentService.update(id, student);
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
         }
-        return age == null ? studentService.getAllStudents() : studentService.findStudentsByAge(age);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id:[0-9]+}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        boolean deleted = studentService.delete(id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    // Шаг 1.1: студенты по возрасту (min/max из query-параметров)
+    @GetMapping(value = "/age", params = {"min", "max"})
+    public List<Student> getStudentsByAgeBetween(@RequestParam int min, @RequestParam int max) {
+        return studentService.findByAgeBetween(min, max);
     }
 
     @GetMapping("/count")
-    public long getStudentCount() {
-        return studentService.getStudentCount();
+    public long getStudentsCount() {
+        return studentService.getStudentsCount();
     }
 
     @GetMapping("/average-age")
-    public double getAverageAge() {
-        return studentService.getAverageAge();
+    public Double getStudentsAverageAge() {
+        return studentService.getStudentsAverageAge();
+    }
+
+    @GetMapping("/names-starting-with-a")
+    public List<String> getStudentNamesStartingWithA() {
+        return studentService.getStudentNamesStartingWithA();
+    }
+
+    @GetMapping("/average-age-stream")
+    public double getStudentsAverageAgeByStream() {
+        return studentService.getStudentsAverageAgeByStream();
     }
 
     @GetMapping("/last-five")
     public List<Student> getLastFiveStudents() {
-        return studentService.getLastFiveStudents();
+        return studentService.findLastFiveStudents();
     }
 
-    @GetMapping("/{id}/faculty")
-    public Faculty getStudentFaculty(@PathVariable Long id) {
-        return studentService.getStudentFaculty(id);
-    }
-
-    @PutMapping
-    public Student editStudent(@RequestBody Student student) {
-        if (student.getId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Student id is required");
+    // Шаг 4.1: факультет конкретного студента
+    @GetMapping("/{id:[0-9]+}/faculty")
+    public ResponseEntity<Faculty> getFacultyOfStudent(@PathVariable Long id) {
+        Faculty faculty = studentService.getFacultyOfStudent(id);
+        if (faculty == null) {
+            return ResponseEntity.notFound().build();
         }
-        return studentService.editStudent(student);
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteStudent(@PathVariable Long id) {
-        studentService.deleteStudent(id);
+        return ResponseEntity.ok(faculty);
     }
 }
