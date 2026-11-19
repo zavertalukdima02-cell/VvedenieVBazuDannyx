@@ -1,40 +1,96 @@
 package ru.hogwarts.school.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.example.hogwarts.model.Faculty;
+import org.example.hogwarts.model.Student;
+import org.example.hogwarts.service.StudentService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.hogwarts.school.model.Student;
-import ru.hogwarts.school.service.StudentService;
 
-import java.util.Optional;
+import java.util.List;
 
 @RestController
-@RequestMapping("/student")
+@RequestMapping("/students")
 public class StudentController {
 
     private final StudentService studentService;
 
-    @Autowired
     public StudentController(StudentService studentService) {
         this.studentService = studentService;
     }
 
     @PostMapping
-    public Student createStudent(@RequestBody Student student) {
-        return studentService.createStudent(student);
+    public ResponseEntity<Student> create(@RequestBody Student student) {
+        return ResponseEntity.ok(studentService.create(student));
     }
 
-    @GetMapping("/{id}")
-    public Optional<Student> getStudent(@PathVariable Long id) {
-        return studentService.getStudent(id);
+    @GetMapping("/{id:[0-9]+}")
+    public ResponseEntity<Student> getById(@PathVariable Long id) {
+        return studentService.getById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PutMapping
-    public Student updateStudent(@RequestBody Student student) {
-        return studentService.updateStudent(student);
+    @GetMapping
+    public List<Student> getAll() {
+        return studentService.getAll();
     }
 
-    @DeleteMapping("/{id}")
-    public void deleteStudent(@PathVariable Long id) {
-        studentService.deleteStudent(id);
+    @PutMapping("/{id:[0-9]+}")
+    public ResponseEntity<Student> update(@PathVariable Long id, @RequestBody Student student) {
+        Student updated = studentService.update(id, student);
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id:[0-9]+}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        boolean deleted = studentService.delete(id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    // Шаг 1.1: студенты по возрасту (min/max из query-параметров)
+    @GetMapping(value = "/age", params = {"min", "max"})
+    public List<Student> getStudentsByAgeBetween(@RequestParam int min, @RequestParam int max) {
+        return studentService.findByAgeBetween(min, max);
+    }
+
+    @GetMapping("/count")
+    public long getStudentsCount() {
+        return studentService.getStudentsCount();
+    }
+
+    @GetMapping("/average-age")
+    public Double getStudentsAverageAge() {
+        return studentService.getStudentsAverageAge();
+    }
+
+    @GetMapping("/names-starting-with-a")
+    public List<String> getStudentNamesStartingWithA() {
+        return studentService.getStudentNamesStartingWithA();
+    }
+
+    @GetMapping("/average-age-stream")
+    public double getStudentsAverageAgeByStream() {
+        return studentService.getStudentsAverageAgeByStream();
+    }
+
+    @GetMapping("/last-five")
+    public List<Student> getLastFiveStudents() {
+        return studentService.findLastFiveStudents();
+    }
+
+    // Шаг 4.1: факультет конкретного студента
+    @GetMapping("/{id:[0-9]+}/faculty")
+    public ResponseEntity<Faculty> getFacultyOfStudent(@PathVariable Long id) {
+        Faculty faculty = studentService.getFacultyOfStudent(id);
+        if (faculty == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(faculty);
     }
 }

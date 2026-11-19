@@ -1,40 +1,72 @@
 package ru.hogwarts.school.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.example.hogwarts.model.Student;
+import org.example.hogwarts.model.Faculty;
+import org.example.hogwarts.service.FacultyService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.hogwarts.school.model.Faculty;
-import ru.hogwarts.school.service.FacultyService;
 
-import java.util.Optional;
+import java.util.List;
 
 @RestController
-@RequestMapping("/faculty")
+@RequestMapping("/faculties")
 public class FacultyController {
 
     private final FacultyService facultyService;
 
-    @Autowired
     public FacultyController(FacultyService facultyService) {
         this.facultyService = facultyService;
     }
 
     @PostMapping
-    public Faculty createFaculty(@RequestBody Faculty faculty) {
-        return facultyService.createFaculty(faculty);
+    public ResponseEntity<Faculty> create(@RequestBody Faculty faculty) {
+        return ResponseEntity.ok(facultyService.create(faculty));
     }
 
-    @GetMapping("/{id}")
-    public Optional<Faculty> getFaculty(@PathVariable Long id) {
-        return facultyService.getFaculty(id);
+    @GetMapping("/{id:[0-9]+}")
+    public ResponseEntity<Faculty> getById(@PathVariable Long id) {
+        return facultyService.getById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PutMapping
-    public Faculty updateFaculty(@RequestBody Faculty faculty) {
-        return facultyService.updateFaculty(faculty);
+    @GetMapping
+    public List<Faculty> getAll() {
+        return facultyService.getAll();
     }
 
-    @DeleteMapping("/{id}")
-    public void deleteFaculty(@PathVariable Long id) {
-        facultyService.deleteFaculty(id);
+    @PutMapping("/{id:[0-9]+}")
+    public ResponseEntity<Faculty> update(@PathVariable Long id, @RequestBody Faculty faculty) {
+        Faculty updated = facultyService.update(id, faculty);
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id:[0-9]+}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        boolean deleted = facultyService.delete(id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    // Шаг 1.2: поиск факультета по имени или цвету (игнорируя регистр)
+    @GetMapping("/search")
+    public List<Faculty> searchByNameOrColorIgnoreCase(@RequestParam String value) {
+        return facultyService.findByNameOrColorIgnoreCase(value);
+    }
+
+    @GetMapping("/longest-name")
+    public String getLongestFacultyName() {
+        return facultyService.getLongestFacultyName();
+    }
+
+    // Шаг 4.2: студенты конкретного факультета
+    @GetMapping("/{id:[0-9]+}/students")
+    public List<Student> getStudentsOfFaculty(@PathVariable Long id) {
+        return facultyService.getStudentsOfFaculty(id);
     }
 }
